@@ -1,21 +1,30 @@
 import java.rmi.RemoteException;
+import java.rmi.NotBoundException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.lang.Math;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.ArrayList;
 
 public class Account implements Account_int {
 
-    private int balance;
+    int balance;
+    ArrayList<Account_int> accounts;
 
-    public void Account (int balance) {
+    public Account (int balance) {
         this.balance = balance;
+        accounts = new ArrayList<Account_int>();
     }
 
     public void receive(int amount) throws RemoteException {
         balance += amount;
+    }
+
+    public void connect(Account_int stub) throws  RemoteException {
+        System.out.println(accounts);
+        accounts.add(stub);
     }
 
     private void transfer(Account_int stub) throws RemoteException {
@@ -35,34 +44,53 @@ public class Account implements Account_int {
         		}
         	}, time
         );
-       
+    }
 
+    public String generateName(Registry registry) {
+        int i = 0;
+        while (true) {
+            String id = String.format("account_%d", i);
+            try {
+                connect((Account_int) registry.lookup(id));
+            } catch (NotBoundException re) {
+                return id;
+
+            } catch (Exception e) {
+                System.err.println("Bad exception: " + e.toString());
+                e.printStackTrace();
+                return "bad_account";
+            }
+            i++;
+        }
     }
 
     public static void main(String[] args) {
     	System.out.println((int)(Math.random() * 50000)+5000);
     	String host = (args.length < 1) ? null : args[0];
 
-    	 try {
-            Registry registry = LocateRegistry.getRegistry(host);
-            Account_int stub = (Account_int) registry.lookup("im_server");
-            Client_int clientStub = (Client_int) UnicastRemoteObject.exportObject(client, 0);
+    	Account account = new Account(200);
+        System.out.println(account.accounts.toString());
+        System.out.println(account.balance);
 
-            System.err.println("Client ready");
+        try {
+            Registry registry = LocateRegistry.getRegistry(1099);
 
-            Scanner sc = new Scanner(System.in);
-            String input = sc.nextLine();
-            while(client.executeCommand(input, stub, clientStub)) {
-                input = sc.nextLine();
-//                executeCommand(input, stub, clientStub);
-            }
+            Account_int stub = (Account_int) UnicastRemoteObject.exportObject(account, 0);
+
+            String id = account.generateName(registry);
+            registry.rebind(id, stub);
+
+            System.err.println("Account ready");
 
 
-            System.out.println("shutting down client...");
-            sc.close();
-            UnicastRemoteObject.unexportObject(client, true);
+            System.out.println(id);
+
+
+//            System.out.println("shutting down client...");
+
+//            UnicastRemoteObject.unexportObject(account, true);
         } catch (Exception e) {
-            System.err.println("Client exception: " + e.toString());
+            System.err.println("Account exception: " + e.toString());
             e.printStackTrace();
         }
     }
