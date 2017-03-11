@@ -49,8 +49,21 @@ public class Account implements Account_int {
         // stub.leaderIs(id);
     }
 
-    private Account_int getNextAccount() {
-        //
+    private Account_int getNextAccount(Registry registry) {
+    	//if accounts is empty return own stub
+    	if(accounts.isEmpty()) {
+    		return (Account_int) registry.lookup(id);
+    	}
+    	int nextInt = id.charAt(id.length()-1)+1;
+    	if(accounts.size() <= nextInt) {
+    		//return account 0
+    		String nextId = "account_0";
+    		return (Account_int) registry.lookup(nextId);
+    	} else {
+    		//return account next int
+    		String nextId = "account_"+nextInt;
+    		return (Account_int) registry.lookup(nextId);
+    	}
     }
 
     @Override
