@@ -34,7 +34,7 @@ public class Account implements Account_int {
 
     public void leaderIs(String accountID, Registry registry) throws RemoteException {
         if (accountID.charAt(id.length()-1) < id.charAt(id.length()-1)) return;
-        else if (accountID > id) {
+        else if (accountID.charAt(id.length()-1) > id.charAt(id.length()-1))  {
             // get next account and pass accountID
             Account_int nextStub = getNextAccount();
             nextStub.leaderIs(accountID);
