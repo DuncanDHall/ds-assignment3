@@ -49,6 +49,10 @@ public class Account implements Account_int {
         // stub.leaderIs(id);
     }
 
+    void getNextAccount() {
+        //
+    }
+
     @Override
     public String toString() { 
     	return id;
