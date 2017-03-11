@@ -41,6 +41,7 @@ public class Account implements Account_int {
         }
         else {
             // start snapshot
+            System.out.println("I'm the leader");
         }
     }
 
