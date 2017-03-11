@@ -32,7 +32,7 @@ public class Account implements Account_int {
         accounts.add(stub);
     }
 
-    void leaderIs(String accountID) throws RemoteException {
+    public void leaderIs(String accountID) throws RemoteException {
         if (accountID < id) {
             return;
         }
@@ -44,12 +44,12 @@ public class Account implements Account_int {
         }
     }
 
-    void startLeading() {
+    public void startLeading() {
         // get next account and pass own id
         // stub.leaderIs(id);
     }
 
-    void getNextAccount() {
+    private Account_int getNextAccount() {
         //
     }
 
