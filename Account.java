@@ -32,21 +32,21 @@ public class Account implements Account_int {
         accounts.add(stub);
     }
 
-    public void leaderIs(String accountID) throws RemoteException {
-        if (accountID < id) {
-            return;
-        }
+    public void leaderIs(String accountID, Registry registry) throws RemoteException {
+        if (accountID < id) return;
         else if (accountID > id) {
             // get next account and pass accountID
+            Account_int nextStub = getNextAccount();
+            nextStub.leaderIs(accountID);
         }
         else {
             // start snapshot
         }
     }
 
-    public void startLeading() {
-        // get next account and pass own id
-        // stub.leaderIs(id);
+    public void startLeading(Registry registry) {
+        Account_int nextStub = getNextAccount(registry);
+        nextStub.leaderIs(id);
     }
 
     private Account_int getNextAccount() {
