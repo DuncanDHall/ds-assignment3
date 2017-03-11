@@ -36,7 +36,7 @@ public class Account implements Account_int {
         if (accountID.charAt(id.length()-1) < id.charAt(id.length()-1)) return;
         else if (accountID.charAt(id.length()-1) > id.charAt(id.length()-1))  {
             // get next account and pass accountID
-            Account_int nextStub = getNextAccount();
+            Account_int nextStub = getNextAccount(registry);
             nextStub.leaderIs(accountID);
         }
         else {
