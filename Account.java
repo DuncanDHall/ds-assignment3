@@ -32,6 +32,23 @@ public class Account implements Account_int {
         accounts.add(stub);
     }
 
+    void leaderIs(String accountID) throws RemoteException {
+        if (accountID < id) {
+            return;
+        }
+        else if (accountID > id) {
+            // get next account and pass accountID
+        }
+        else {
+            // start snapshot
+        }
+    }
+
+    void startLeading() {
+        // get next account and pass own id
+        // stub.leaderIs(id);
+    }
+
     @Override
     public String toString() { 
     	return id;
