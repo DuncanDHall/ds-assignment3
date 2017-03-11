@@ -12,33 +12,49 @@ public class Account implements Account_int {
 
     int balance;
     ArrayList<Account_int> accounts;
+    String id;
 
     public Account (int balance) {
         this.balance = balance;
         accounts = new ArrayList<Account_int>();
+        id = "account_";
+    }
+
+    public String getID() throws RemoteException {
+    	return id;
     }
 
     public void receive(int amount) throws RemoteException {
         balance += amount;
     }
 
-    public void connect(Account_int stub) throws  RemoteException {
-        System.out.println(accounts);
+    public void connect(Account_int stub) throws RemoteException {
         accounts.add(stub);
     }
 
-    private void transfer(Account_int stub) throws RemoteException {
-        int time = (int)(Math.random() * 45000)+5000;
+    @Override
+    public String toString() { 
+    	return id;
+    }
+
+    public void transfer() throws RemoteException {
+        int time = (int)(Math.random() * 2000)+1000;
         int amount = (int)(Math.random() * balance)+1;
-        balance -= amount;
         //int pid = (int)(Math.random() * 4)+1;
         new Timer().schedule (
         	new TimerTask() {
         		@Override
         		public void run() {
         			try {
-        				stub.receive(amount);
-        				} catch(Exception e) {
+        				if (accounts.size() != 0 && balance > 0) {
+        					int stubIndex = (int)(Math.random() * accounts.size());
+	        				Account_int stub = accounts.get(stubIndex);
+	        				balance -= amount;
+	        				stub.receive(amount);
+	        				System.out.println("sent "+amount+" of money to "+accounts.get(stubIndex).getID());
+        				}
+        				transfer();
+    				} catch(Exception e) {
                         System.out.println("registerName exception");
                     }
         		}
@@ -46,13 +62,16 @@ public class Account implements Account_int {
         );
     }
 
-    public String generateName(Registry registry) {
+    public String generateName(Registry registry, Account_int stub) {
         int i = 0;
         while (true) {
             String id = String.format("account_%d", i);
             try {
-                connect((Account_int) registry.lookup(id));
+            	Account_int other_stub =(Account_int) registry.lookup(id);
+            	other_stub.connect(stub);
+            	connect(other_stub);
             } catch (NotBoundException re) {
+            	this.id = id;
                 return id;
 
             } catch (Exception e) {
@@ -65,26 +84,33 @@ public class Account implements Account_int {
     }
 
     public static void main(String[] args) {
-    	System.out.println((int)(Math.random() * 50000)+5000);
+
+    	// int i = 0;
+    	// while (true) {
+    	// 	System.out.println(i);
+    	// 	i++;
+    	// }
+
+    	//System.out.println((int)(Math.random() * 50000)+5000);
     	String host = (args.length < 1) ? null : args[0];
 
     	Account account = new Account(200);
-        System.out.println(account.accounts.toString());
-        System.out.println(account.balance);
+        //System.out.println(account.accounts.toString());
+        //System.out.println(account.balance);
 
         try {
             Registry registry = LocateRegistry.getRegistry(1099);
 
             Account_int stub = (Account_int) UnicastRemoteObject.exportObject(account, 0);
 
-            String id = account.generateName(registry);
+            String id = account.generateName(registry, stub);
             registry.rebind(id, stub);
 
             System.err.println("Account ready");
 
 
             System.out.println(id);
-
+            account.transfer();
 
 //            System.out.println("shutting down client...");
 
