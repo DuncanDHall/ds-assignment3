@@ -156,7 +156,7 @@ public class Account implements Account_int {
 
             System.err.println("Account ready");
 
-
+            account.leaderIs(id, registry);
             System.out.println(id);
             account.transfer();
 
