@@ -37,7 +37,7 @@ public class Account implements Account_int {
         else if (accountID.charAt(id.length()-1) > id.charAt(id.length()-1))  {
             // get next account and pass accountID
             Account_int nextStub = getNextAccount(registry);
-            nextStub.leaderIs(accountID);
+            nextStub.leaderIs(accountID, registry);
         }
         else {
             // start snapshot
@@ -45,26 +45,39 @@ public class Account implements Account_int {
         }
     }
 
-    public void startLeading(Registry registry) {
+    public void startLeading(Registry registry) throws RemoteException {
         Account_int nextStub = getNextAccount(registry);
-        nextStub.leaderIs(id);
+        nextStub.leaderIs(id, registry);
     }
 
-    private Account_int getNextAccount(Registry registry) {
+    private Account_int getNextAccount(Registry registry) throws RemoteException {
     	//if accounts is empty return own stub
     	if(accounts.isEmpty()) {
-    		return (Account_int) registry.lookup(id);
+    		try {
+    			return (Account_int) registry.lookup(id);
+    		} catch(NotBoundException e) {
+    			System.out.println("registry.lookup not f exception");
+    		}
     	}
     	int nextInt = id.charAt(id.length()-1)+1;
     	if(accounts.size() <= nextInt) {
     		//return account 0
     		String nextId = "account_0";
-    		return (Account_int) registry.lookup(nextId);
+    		try {
+    			return (Account_int) registry.lookup(nextId);
+    		} catch(NotBoundException e) {
+    			System.out.println("registry.lookup not bound exception");
+    		}
     	} else {
     		//return account next int
     		String nextId = "account_"+nextInt;
-    		return (Account_int) registry.lookup(nextId);
+    		try {
+    			return (Account_int) registry.lookup(nextId);
+    		} catch(NotBoundException e) {
+    			System.out.println("registry.lookup not bound exception");
+    		}
     	}
+    	return null;
     }
 
     @Override
@@ -72,7 +85,7 @@ public class Account implements Account_int {
     	return id;
     }
 
-    public void transfer() throws RemoteException {
+    public void transfer() throws RemoteException { 
         int time = (int)(Math.random() * 2000)+1000;
         int amount = (int)(Math.random() * balance)+1;
         //int pid = (int)(Math.random() * 4)+1;
