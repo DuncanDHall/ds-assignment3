@@ -1,12 +1,12 @@
-import java.rmi.RemoteException;
+import java.net.InetAddress;
 import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.lang.Math;
+import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.ArrayList;
 
 public class Account implements Account_int {
 
@@ -36,6 +36,7 @@ public class Account implements Account_int {
         if (accountID.charAt(id.length()-1) < id.charAt(id.length()-1)) return;
         else if (accountID.charAt(id.length()-1) > id.charAt(id.length()-1))  {
             // get next account and pass accountID
+            System.out.println(id + "I think I'm the leader...");
             Account_int nextStub = getNextAccount(registry);
             nextStub.leaderIs(accountID, registry);
         }
@@ -87,7 +88,7 @@ public class Account implements Account_int {
 
     public void transfer() throws RemoteException { 
         int time = (int)(Math.random() * 2000)+1000;
-        int amount = (int)(Math.random() * balance)+1;
+        final int amount = (int)(Math.random() * balance)+1;
         //int pid = (int)(Math.random() * 4)+1;
         new Timer().schedule (
         	new TimerTask() {
@@ -155,6 +156,7 @@ public class Account implements Account_int {
             registry.rebind(id, stub);
 
             System.err.println("Account ready");
+            System.out.println("my ip is: " + InetAddress.getLocalHost());
 
             account.leaderIs(id, registry);
             System.out.println(id);
