@@ -7,4 +7,7 @@ public interface Account_server_int extends Account_int {
     String getID() throws RemoteException;
     // called by server telling accounts to remember stubs to other accounts
     void connectAccount(Account_int accountStub) throws RemoteException;
+
+    //TODO: safe disconnect
+//    void disconnectAccount(Account_int accountStub) throws RemoteException;
 }

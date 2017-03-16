@@ -1,3 +1,5 @@
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -17,7 +19,12 @@ public class Account implements Account_server_int {
     public Account (int balance) {
         this.balance = balance;
         accounts = new ArrayList<Account_int>();
-        id = "account_";
+        try {
+            id = "account@" + InetAddress.getLocalHost();
+        } catch (UnknownHostException e) {
+            System.out.println("Account failed to discover it's name:");
+            e.printStackTrace();
+        }
     }
 
     public void connectAccount(Account_int accountStub) throws RemoteException {
@@ -86,7 +93,8 @@ public class Account implements Account_server_int {
     	return "Account object with id: " + id;
     }
 
-    public void transfer() throws RemoteException { 
+    public void transfer() throws RemoteException {
+
         int time = (int)(Math.random() * 2000)+1000;
         final int amount = (int)(Math.random() * balance)+1;
         //int pid = (int)(Math.random() * 4)+1;
@@ -94,13 +102,14 @@ public class Account implements Account_server_int {
         	new TimerTask() {
         		@Override
         		public void run() {
+                    System.out.println("Attempting transfer...");
         			try {
         				if (accounts.size() != 0 && balance > 0) {
         					int stubIndex = (int)(Math.random() * accounts.size());
 	        				Account_int stub = accounts.get(stubIndex);
 	        				balance -= amount;
 	        				stub.receive(amount);
-	        				System.out.println("Sent $"+amount+" to "+accounts.get(stubIndex).getID());
+	        				System.out.println("\t...sent $"+amount+" to "+accounts.get(stubIndex).getID());
         				}
         				transfer();
     				} catch (RemoteException e) {
@@ -126,10 +135,11 @@ public class Account implements Account_server_int {
             String host_ip = scan.nextLine();
 
             System.out.println("Connecting to rmi registry...");
-            Account_int stub = (Account_int) UnicastRemoteObject.exportObject(account, 0);
+            Account_server_int stub = (Account_server_int) UnicastRemoteObject.exportObject(account, 0);
 
             Registry registry = LocateRegistry.getRegistry(host_ip,1099);
             Server_int server_stub = (Server_int) registry.lookup("server");
+            server_stub.connect(stub);
 
             System.err.println("Account ready");
 

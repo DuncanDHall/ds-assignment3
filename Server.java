@@ -17,7 +17,6 @@ public class Server implements Server_int {
         accounts = new ArrayList<>();
     }
 
-    @Override
     public void connect(Account_server_int stub) throws RemoteException {
         for (Account_server_int account: accounts) {
             // add existing account stubs to new account
@@ -25,6 +24,7 @@ public class Server implements Server_int {
             // add new account to existing account
             account.connectAccount(stub);
         }
+        accounts.add(stub);
         System.out.println("Added " + stub.getID() + " to account registry");
     }
 
@@ -36,7 +36,7 @@ public class Server implements Server_int {
             System.out.println("Connecting to rmi registry...");
             Registry registry = LocateRegistry.getRegistry(1099);
             Server_int stub = (Server_int) UnicastRemoteObject.exportObject(server, 0);
-            registry.rebind("server", registry);
+            registry.rebind("server", stub);
 
             System.out.println("Server ready!");
             System.out.println("ip: " + InetAddress.getLocalHost());
