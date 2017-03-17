@@ -65,7 +65,7 @@ public class Account implements Account_server_int {
         //TODO
     }
 
-    public void passSnapshotLog(String logEntry) throws RemoteException {
+    public void passSnapshotLog(String logEntry, int amount) throws RemoteException {
         //TODO
     }
 

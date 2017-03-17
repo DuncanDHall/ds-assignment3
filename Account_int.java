@@ -13,5 +13,5 @@ public interface Account_int extends Remote {
 
     // snapshot
     void snapshot(Account_int sender) throws RemoteException;
-    void passSnapshotLog(String logEntry) throws RemoteException;
+    void passSnapshotLog(String logEntry, int amount) throws RemoteException;
 }
