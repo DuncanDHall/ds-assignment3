@@ -61,11 +61,6 @@ public class Account implements Account_server_int {
         getNextAccount().leaderIs(this.getID());
     }
 
-//    public void startLeading(Registry registry) throws RemoteException {
-//        Account_int nextStub = getNextAccount(registry);
-//        nextStub.leaderIs(id, registry);
-//    }
-
     private Account_int getNextAccount() throws RemoteException {
     	//if accounts is empty return reference to self
     	if(accounts.isEmpty()) {
