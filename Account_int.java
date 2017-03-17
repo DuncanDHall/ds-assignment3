@@ -12,4 +12,6 @@ public interface Account_int extends Remote {
     void leaderIs() throws RemoteException;
 
     // snapshot
+    void snapshot(Account_int sender) throws RemoteException;
+    void passSnapshotLog(String logEntry) throws RemoteException;
 }

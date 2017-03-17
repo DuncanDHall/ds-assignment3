@@ -61,6 +61,14 @@ public class Account implements Account_server_int {
         getNextAccount().leaderIs(this.getID());
     }
 
+    public void snapshot(Account_int sender) throws RemoteException {
+        //TODO
+    }
+
+    public void passSnapshotLog(String logEntry) throws RemoteException {
+        //TODO
+    }
+
     private Account_int getNextAccount() throws RemoteException {
     	//if accounts is empty return reference to self
     	if(accounts.isEmpty()) {
