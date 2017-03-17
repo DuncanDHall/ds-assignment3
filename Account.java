@@ -44,6 +44,7 @@ public class Account implements Account_server_int {
     public void leaderIs(String accountID) throws RemoteException {
         if (accountID.compareTo(this.getID()) < 0) {
             System.out.println("me: " + this.getID() + " > " + accountID);
+            getNextAccount().leaderIs(this.getID());
             return;
         }
         if (accountID.compareTo(this.getID()) == 0) {
