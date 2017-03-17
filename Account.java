@@ -51,8 +51,8 @@ public class Account implements Account_server_int {
             // start leading
         }
         else {
-            getNextAccount().leaderIs(accountID);
             System.out.println("me: " + this.getID() + " < " + accountID);
+            getNextAccount().leaderIs(accountID);
         }
     }
 
