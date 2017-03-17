@@ -5,10 +5,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.ArrayList;
-import java.util.Scanner;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 
 public class Account implements Account_server_int {
 
@@ -18,7 +15,7 @@ public class Account implements Account_server_int {
 
     public Account (int balance) {
         this.balance = balance;
-        accounts = new ArrayList<Account_int>();
+        accounts = new ArrayList<>();
         try {
             id = "account@" + InetAddress.getLocalHost();
         } catch (UnknownHostException e) {
@@ -31,65 +28,73 @@ public class Account implements Account_server_int {
         accounts.add(accountStub);
     }
 
+    public void rename(String newName) throws RemoteException {
+        this.id = newName;
+    }
+
     public String getID() throws RemoteException {
     	return id;
     }
 
     public void receive(int amount) throws RemoteException {
+        System.out.println("Recieved $" + amount);
         balance += amount;
     }
 
-//    public void leaderIs(String accountID, Registry registry) throws RemoteException {
-//        if (accountID.charAt(id.length()-1) < id.charAt(id.length()-1)) return;
-//        else if (accountID.charAt(id.length()-1) > id.charAt(id.length()-1))  {
-//            // get next account and pass accountID
-//            System.out.println(id + "I think I'm the leader...");
-//            Account_int nextStub = getNextAccount(registry);
-//            nextStub.leaderIs(accountID, registry);
-//        }
-//        else {
-//            // start snapshot
-//            System.out.println("I'm the leader");
-//        }
-//    }
-//
+    public void leaderIs(String accountID) throws RemoteException {
+        if (accountID.compareTo(this.getID()) < 0) {
+            System.out.println("me: " + this.getID() + " > " + accountID);
+            return;
+        }
+        if (accountID == this.getID()) {
+            System.out.println("I'm the leader");
+            // start leading
+        }
+        else {
+            getNextAccount().leaderIs(accountID);
+            System.out.println("me: " + this.getID() + " < " + accountID);
+        }
+    }
+
+    public void leaderIs() throws RemoteException {
+        Account_int next_account = getNextAccount();
+        String thisID = this.getID();
+        next_account.leaderIs(thisID);
+//        getNextAccount().leaderIs(this.getID());
+    }
+
 //    public void startLeading(Registry registry) throws RemoteException {
 //        Account_int nextStub = getNextAccount(registry);
 //        nextStub.leaderIs(id, registry);
 //    }
 
-//    private Account_int getNextAccount(Registry registry) throws RemoteException {
-//    	//if accounts is empty return own stub
-//    	if(accounts.isEmpty()) {
-//    		try {
-//    			return (Account_int) registry.lookup(id);
-//    		} catch(NotBoundException e) {
-//    			System.out.println("registry.lookup not f exception");
-//    		}
-//    	}
-//    	int nextInt = id.charAt(id.length()-1)+1;
-//    	if(accounts.size() <= nextInt) {
-//    		//return account 0
-//    		String nextId = "account_0";
-//    		try {
-//    			return (Account_int) registry.lookup(nextId);
-//    		} catch(NotBoundException e) {
-//    			System.out.println("registry.lookup not bound exception");
-//    		}
-//    	} else {
-//    		//return account next int
-//    		String nextId = "account_"+nextInt;
-//    		try {
-//    			return (Account_int) registry.lookup(nextId);
-//    		} catch(NotBoundException e) {
-//    			System.out.println("registry.lookup not bound exception");
-//    		}
-//    	}
-//    	return null;
-//    }
+    private Account_int getNextAccount() throws RemoteException {
+    	//if accounts is empty return reference to self
+    	if(accounts.isEmpty()) {
+    	    return this;
+    	}
+
+    	// else return the smallest greater account, or if there is none, the smallest overall
+    	Account_int leastGreater = null;
+    	Account_int least = accounts.get(0);
+
+    	for (Account_int accountStub: accounts) {
+    	    // updating leastGreatest
+    	    if (accountStub.getID().compareTo(this.getID()) > 0) {
+    	        if (leastGreater == null || accountStub.getID().compareTo(leastGreater.getID()) < 0) {
+    	            leastGreater = accountStub;
+                }
+            }
+
+            // updating least
+            if (accountStub.getID().compareTo(least.getID()) < 0) least = accountStub;
+        }
+
+        return (leastGreater == null)? least: leastGreater;
+    }
 
     @Override
-    public String toString() { 
+    public String toString() {
     	return "Account object with id: " + id;
     }
 
@@ -143,13 +148,13 @@ public class Account implements Account_server_int {
             Server_int server_stub = (Server_int) registry.lookup("server");
 
             System.out.println("Connecting to other accounts...");
+
             server_stub.connect(stub);
 
-            System.err.println("Account ready");
+            System.err.println("Account ready: " + account.getID());
 
-//            account.leaderIs(id, registry);
-//            System.out.println(id);
-            account.transfer();
+            account.leaderIs();
+//            account.transfer();
 
         } catch (RemoteException e) {
             System.err.println("Account error: rmi connection issues:");

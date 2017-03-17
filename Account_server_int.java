@@ -8,6 +8,9 @@ public interface Account_server_int extends Account_int {
     // called by server telling accounts to remember stubs to other accounts
     void connectAccount(Account_int accountStub) throws RemoteException;
 
+    // in the case that two accounts connect from the same ip, they need unique names
+    void rename(String newName) throws RemoteException;
+
     //TODO: safe disconnect
 //    void disconnectAccount(Account_int accountStub) throws RemoteException;
 }

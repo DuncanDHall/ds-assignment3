@@ -8,7 +8,8 @@ public interface Account_int extends Remote {
     void receive(int amount) throws RemoteException;
 
     // leader election
-//    void leaderIs(String accountID, Registry registry) throws RemoteException;
+    void leaderIs(String accountID) throws RemoteException;
+    void leaderIs() throws RemoteException;
 
     // snapshot
 }
