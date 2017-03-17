@@ -110,7 +110,9 @@ public class Account implements Account_server_int {
 	        				balance -= amount;
 	        				stub.receive(amount);
 	        				System.out.println("\t...sent $"+amount+" to "+accounts.get(stubIndex).getID());
-        				}
+        				} else {
+                            System.out.println("\t...no other accounts found");
+                        }
         				transfer();
     				} catch (RemoteException e) {
                         System.out.println("Unable to connect to target account while transferring:");
@@ -139,6 +141,8 @@ public class Account implements Account_server_int {
 
             Registry registry = LocateRegistry.getRegistry(host_ip,1099);
             Server_int server_stub = (Server_int) registry.lookup("server");
+
+            System.out.println("Connecting to other accounts...");
             server_stub.connect(stub);
 
             System.err.println("Account ready");

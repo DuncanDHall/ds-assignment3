@@ -36,6 +36,7 @@ public class Server implements Server_int {
             System.out.println("Connecting to rmi registry...");
             Registry registry = LocateRegistry.getRegistry(1099);
             Server_int stub = (Server_int) UnicastRemoteObject.exportObject(server, 0);
+
             registry.rebind("server", stub);
 
             System.out.println("Server ready!");
