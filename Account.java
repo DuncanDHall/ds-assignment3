@@ -46,7 +46,7 @@ public class Account implements Account_server_int {
             System.out.println("me: " + this.getID() + " > " + accountID);
             return;
         }
-        if (accountID == this.getID()) {
+        if (accountID.compareTo(this.getID()) == 0) {
             System.out.println("I'm the leader");
             // start leading
         }
@@ -57,10 +57,7 @@ public class Account implements Account_server_int {
     }
 
     public void leaderIs() throws RemoteException {
-        Account_int next_account = getNextAccount();
-        String thisID = this.getID();
-        next_account.leaderIs(thisID);
-//        getNextAccount().leaderIs(this.getID());
+        getNextAccount().leaderIs(this.getID());
     }
 
 //    public void startLeading(Registry registry) throws RemoteException {
