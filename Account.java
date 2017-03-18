@@ -13,6 +13,9 @@ public class Account implements Account_server_int {
     ArrayList<Account_int> accounts;
     String id;
 
+    // snapshot stuff
+    HashMap<String, SnapshotAssistant> activeSnapshots;
+
     public Account (int balance) {
         this.balance = balance;
         accounts = new ArrayList<>();
@@ -22,6 +25,8 @@ public class Account implements Account_server_int {
             System.out.println("Account failed to discover it's name:");
             e.printStackTrace();
         }
+
+        activeSnapshots = new HashMap<>();
     }
 
     public void connectAccount(Account_int accountStub) throws RemoteException {
@@ -50,6 +55,7 @@ public class Account implements Account_server_int {
         if (accountID.compareTo(this.getID()) == 0) {
             System.out.println("I'm the leader");
             // start leading
+            leadSnapshot();
         }
         else {
             System.out.println("me: " + this.getID() + " < " + accountID);
@@ -61,12 +67,23 @@ public class Account implements Account_server_int {
         getNextAccount().leaderIs(this.getID());
     }
 
-    public void snapshot(Account_int sender) throws RemoteException {
+    public void snapshot(String snapshotID, SnapshotAssistant sa) throws RemoteException {
         //TODO
     }
 
-    public void passSnapshotLog(String logEntry, int amount) throws RemoteException {
+    public void passSnapshotLog(Account_int sender, String snapshotID, String logEntry, int amount) throws RemoteException {
+        SnapshotAssistant sa = activeSnapshots.get(snapshotID);
+        sa.log(logEntry, amount);
+        boolean snapshotComplete = sa.heardFrom(sender);
+        if (snapshotComplete) sa.saveSnapshot();
+
         //TODO
+    }
+
+    private void leadSnapshot() {
+        //TODO
+        SnapshotAssistant sa = new SnapshotAssistant(this, accounts);
+        sa.propagate();
     }
 
     private Account_int getNextAccount() throws RemoteException {
