@@ -80,6 +80,7 @@ public class Account implements Account_server_int {
         } else {
             sa = new SnapshotAssistant(sa, this.getID(), balance, accounts);
             activeSnapshots.put(snapshotID, sa);
+            sa.propagate();
         }
 
         if (sa.heardFrom(senderID)) {
@@ -96,6 +97,7 @@ public class Account implements Account_server_int {
     }
 
     private void leadSnapshot() throws RemoteException {
+        // TODO this snapshot that's created isn't used...
         SnapshotAssistant sa = new SnapshotAssistant(this, this.getID(), balance, accounts);
         snapshot(this.getID(), sa.getID(), sa);
     }
