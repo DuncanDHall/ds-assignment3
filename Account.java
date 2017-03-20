@@ -42,6 +42,12 @@ public class Account implements Account_server_int {
     }
 
     public void receive(int amount) throws RemoteException {
+        // for snapshots
+        for (SnapshotAssistant sa: activeSnapshots.values()) {
+            sa.logTransfer(amount);
+        }
+
+        // actual transfer
         System.out.println("Recieved $" + amount);
         balance += amount;
     }
@@ -67,23 +73,31 @@ public class Account implements Account_server_int {
         getNextAccount().leaderIs(this.getID());
     }
 
-    public void snapshot(String snapshotID, SnapshotAssistant sa) throws RemoteException {
-        //TODO
+    public void snapshot(String senderID, String snapshotID, SnapshotAssistant sa) throws RemoteException {
+        //TODO I question this logic
+        if (activeSnapshots.containsKey(snapshotID)) {
+            sa = activeSnapshots.get(snapshotID);
+        } else {
+            sa = new SnapshotAssistant(sa, this.getID(), balance, accounts);
+            activeSnapshots.put(snapshotID, sa);
+        }
+
+        if (sa.heardFrom(senderID)) {
+            // runs if heard from all accounts
+            sa.reportToLeader();
+            activeSnapshots.remove(snapshotID);
+        }
     }
 
-    public void passSnapshotLog(Account_int sender, String snapshotID, String logEntry, int amount) throws RemoteException {
+    public void passSnapshotLog(String snapshotID, String logEntry, int amount) throws RemoteException {
+        // invoked by non-leaders on leader when they've heard from every other account
         SnapshotAssistant sa = activeSnapshots.get(snapshotID);
-        sa.log(logEntry, amount);
-        boolean snapshotComplete = sa.heardFrom(sender);
-        if (snapshotComplete) sa.saveSnapshot();
-
-        //TODO
+        sa.appendToLeaderLog(logEntry, amount);
     }
 
-    private void leadSnapshot() {
-        //TODO
-        SnapshotAssistant sa = new SnapshotAssistant(this, accounts);
-        sa.propagate();
+    private void leadSnapshot() throws RemoteException {
+        SnapshotAssistant sa = new SnapshotAssistant(this, this.getID(), balance, accounts);
+        snapshot(this.getID(), sa.getID(), sa);
     }
 
     private Account_int getNextAccount() throws RemoteException {

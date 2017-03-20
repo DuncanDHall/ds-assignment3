@@ -1,78 +1,111 @@
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.rmi.RemoteException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
+import java.util.HashMap;
 
 /**
  * Created by duncan on 3/17/17.
  */
-public class SnapshotAssistant {
+public class SnapshotAssistant implements Serializable {
 
     String id;
     Account_int leader;
-    HashSet<Account_int> downStreamAccounts;
+    String ownerID;
+    HashMap<String, Account_int> downStreamAccounts;
 
-    StringBuilder log;
+    ArrayList<Integer> incomingTransfers;
+
+    StringBuilder myLog;
+    StringBuilder leaderLog;
+    int balance;
     int volume;  // total amount of money tracked in snapshot
 
-    public SnapshotAssistant(Account_int leader, ArrayList<Account_int> accounts) {
+    public SnapshotAssistant(Account_int leader, String ownerID, int balance, ArrayList<Account_int> accounts) {
         this.id = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS").format(new Date());
         this.leader = leader;
-        downStreamAccounts = new HashSet<>();
+        this.ownerID = ownerID;
+        this.balance = balance;
+        downStreamAccounts = new HashMap<>();
         try {
+            for (Account_int a: accounts) downStreamAccounts.put(a.getID(), a);
 
-            for (Account_int a: accounts) downStreamAccounts.add(a);
-            log = new StringBuilder("Snapshot id: "+id+"\nLeader: "+leader.getID()+"\n");
-
+            // leader specific:
+            String leaderID = leader.getID();
+            if (leaderID == ownerID) {
+                leaderLog = new StringBuilder();
+                leaderLog.append("Snapshot log " + id + " lead by " + leaderID + ":\n");
+            }
         } catch (RemoteException e) {
             System.err.println("SnapshotAssistant error while getting IDs:");
             e.printStackTrace();
         }
+        myLog = new StringBuilder("<" + ownerID + " | ");
+        incomingTransfers = new ArrayList<>();
     }
 
-    public SnapshotAssistant(SnapshotAssistant another) {
-        // used to copy an existing snapshot
+    public SnapshotAssistant(SnapshotAssistant another, String ownerID, int balance, ArrayList<Account_int> accounts) {
+        // used to create a snapshot with the same leader and id.
         this.id = another.id;
         this.leader = another.leader;
-        this.downStreamAccounts = another.downStreamAccounts;
+        this.ownerID = ownerID;
+        this.balance = balance;
+        downStreamAccounts = new HashMap<>();
+        try {
+            for (Account_int a: accounts) downStreamAccounts.put(a.getID(), a);
+        } catch (RemoteException e) {
+            System.err.println("SnapshotAssistant error while getting IDs:");
+            e.printStackTrace();
+        }
+        myLog = new StringBuilder("<" + ownerID + " | ");
+        incomingTransfers = new ArrayList<>();
     }
 
     public String getID() {
         return id;
     }
 
-    public void log(String logEntry, int amount) {
-        log.append(logEntry+"\n");
+    public void logTransfer(int amount) {
         volume += amount;
+        incomingTransfers.add(amount);
     }
 
-    public boolean heardFrom(Account_int sender) {
+    public boolean heardFrom(String senderID) {
         // returns true if heard from all other accounts.
-        try {
-            downStreamAccounts.remove(sender.getID());
-        } catch (RemoteException e) {
-            System.err.println("Snapshot error - getting an ID");
-            e.printStackTrace();
-        }
+        downStreamAccounts.remove(senderID);
         return downStreamAccounts.isEmpty();
     }
 
+    public void reportToLeader() {
+
+        myLog.append("balance: $" + balance + " | transfers:");
+        for (int amount: incomingTransfers) myLog.append(" $" + amount);
+        myLog.append(">\n");
+
+        try {
+            leader.passSnapshotLog(id, myLog.toString(), volume);
+        } catch (RemoteException e) {
+            System.err.println("Unable to pass state log to leader:");
+            e.printStackTrace();
+        }
+    }
+
     public void saveSnapshot() {
-        // create final entry in log for total volume:
-        log.append("Total volume: $" + volume);
+        leaderLog.append("Total volume: " + volume);
+
+        // make sure snapshot/ directory exists
+        File dir = new File("snapshots");
+        if (!dir.exists()) dir.mkdir();
 
         // create a new file named with the snapshot timestamp
-        File logFile = new File(id);
+        String pathname = "snapshots/" + id;
+        File logFile = new File(pathname);
 
         //write log to that file
         try {
             BufferedWriter writer = new BufferedWriter(new FileWriter(logFile));
-            writer.write(log.toString());
+            writer.write(leaderLog.toString());
         } catch (IOException e) {
             System.err.println("Error while writing to snapshot log file " + id);
             e.printStackTrace();
@@ -83,13 +116,19 @@ public class SnapshotAssistant {
     }
 
     public void propagate() {
-        for (Account_int account: downStreamAccounts){
+        for (String accountID: downStreamAccounts.keySet()){
             try {
-                account.snapshot(this.getID(), this);
+                String id = this.getID();
+                downStreamAccounts.get(accountID).snapshot(ownerID, id, this);
             } catch (RemoteException e) {
-                System.err.println("Error while propigating snapshot:")
+                System.err.println("Error while propagating snapshot:");
                 e.printStackTrace();
             }
         }
+    }
+
+    public void appendToLeaderLog(String logEntry, int amount) {
+        leaderLog.append(logEntry);
+        volume += amount;
     }
 }
