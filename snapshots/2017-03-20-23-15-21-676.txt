@@ -1,0 +1,6 @@
+Snapshot log 2017-03-20-23-15-21-676 lead by accountt@computor.olin.edu/10.7.64.106:
+<account@computor.olin.edu/10.7.64.106 | balance: $200 | transfers:>
+<accountt@computor.olin.edu/10.7.64.106 | balance: $300 | transfers:>
+Total volume: 0<accountt@computor.olin.edu/10.7.64.106 | balance: $300 | transfers:>
+balance: $300 | transfers:>
+Total volume: 0

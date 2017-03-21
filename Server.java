@@ -5,54 +5,35 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Created by duncan on 3/16/17.
  */
 public class Server implements Server_int {
 
-    ArrayList<Account_server_int> accounts;
-    HashSet<String> accountNames;
+    ArrayList<Account_int> accounts;
+    int accountNum;
 
     public Server() {
         accounts = new ArrayList<>();
-        accountNames = new HashSet<>();
+        accountNum = 0;
     }
 
-    public boolean connect(Account_server_int stub) throws RemoteException {
-        // check if account name is correct pattern:
-        if (!validateName(stub.getID())) return false;
+    @Override
+    public String generateAccountID(String ip) throws RemoteException {
+        return "account" + accountNum + "@" + ip;
+    }
 
-        // rename if duplicate
-        while (accountNames.contains(stub.getID())) {
-            stub.rename(reformatName(stub.getID()));
-        }
-
-        for (Account_server_int account: accounts) {
-            // add existing account stubs to new account
-            stub.connectAccount(account);
-            // add new account to existing account
-            account.connectAccount(stub);
-        }
+    public boolean connect(Account_int stub, String accountID) throws RemoteException {
         accounts.add(stub);
-        accountNames.add(stub.getID());
-        System.out.println("Added " + stub.getID() + " to account registry");
+        accountNum++;
+        System.out.println("Account " + accountID + " was connected.");
         return true;
     }
 
-    private String reformatName(String id) {
-        StringBuilder sb = new StringBuilder(id).insert(7, 't');
-        return sb.toString();
-    }
-
-
-    private boolean validateName(String id) {
-        Pattern p = Pattern.compile("account\\d*@.+");
-        Matcher m = p.matcher(id);
-        return m.matches();
+    @Override
+    public ArrayList<Account_int> getAccounts() throws RemoteException {
+        return accounts;
     }
 
     public static void main(String[] args) {

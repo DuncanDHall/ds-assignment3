@@ -7,7 +7,7 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 
-public class Account implements Account_server_int {
+public class Account implements Account_int {
 
     int balance;
     ArrayList<Account_int> accounts;
@@ -44,7 +44,7 @@ public class Account implements Account_server_int {
     public void leaderIs(String accountID) throws RemoteException {
         if (accountID.compareTo(this.getID()) < 0) {
             System.out.println("me: " + this.getID() + " > " + accountID);
-            return;
+            leaderIs(this.getID());
         }
         if (accountID.compareTo(this.getID()) == 0) {
             System.out.println("I'm the leader");
@@ -58,6 +58,15 @@ public class Account implements Account_server_int {
 
     public void leaderIs() throws RemoteException {
         getNextAccount().leaderIs(this.getID());
+    }
+
+    @Override
+    public void stall() throws RemoteException {
+        try {
+            Thread.sleep(100000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
 //    public void startLeading(Registry registry) throws RemoteException {
@@ -139,7 +148,7 @@ public class Account implements Account_server_int {
             String host_ip = scan.nextLine();
 
             System.out.println("Connecting to rmi registry...");
-            Account_server_int stub = (Account_server_int) UnicastRemoteObject.exportObject(account, 0);
+            Account_int stub = (Account_int) UnicastRemoteObject.exportObject(account, 0);
 
             Registry registry = LocateRegistry.getRegistry(host_ip,1099);
             Server_int server_stub = (Server_int) registry.lookup("server");
@@ -150,7 +159,10 @@ public class Account implements Account_server_int {
 
             System.err.println("Account ready: " + account.getID());
 
-            account.leaderIs();
+
+            account.timeTest();
+
+//            account.leaderIs();
 //            account.transfer();
 
         } catch (RemoteException e) {
@@ -159,6 +171,18 @@ public class Account implements Account_server_int {
         } catch (NotBoundException e) {
             System.out.println("Account error: no 'server' bound in this rmi registry:");
             e.printStackTrace();
+        }
+    }
+
+    private void timeTest() {
+        if (!accounts.isEmpty()) {
+            System.out.println("here1");
+            try {
+                accounts.get(0).stall();
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+            System.out.println("here");
         }
     }
 
