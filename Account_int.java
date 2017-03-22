@@ -12,7 +12,7 @@ public interface Account_int extends Remote {
     void leaderIs(String accountID) throws RemoteException;
     void leaderIs() throws RemoteException;
 
-//    void stall() throws RemoteException;
+//    String stall() throws RemoteException;
 
     // snapshot
     void receiveMarker(Account_int sender, Account_int leader, String snapshotID) throws RemoteException;

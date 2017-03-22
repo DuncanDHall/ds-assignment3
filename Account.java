@@ -189,35 +189,41 @@ public class Account implements Account_int {
 
 
 //    @Override
-//    public void stall() throws RemoteException {
+//    public String stall() throws RemoteException {
 //        System.out.println("before");
-//        int j = 5;
-//        int sum = 1;
-//        while (j++ < 1000000000) {
-//            int s = j;
-//            while (s > 0) {
-//                sum += s;
-//                s--;
-//            }
+//        try {
+//            Thread.sleep(10000);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
 //        }
+//        return "done";
+////        int j = 2;
+////        while (j++ < 1000000000) {
+////            int s = j;
+////            while (s > 0) {
+////                s--;
+////            }
+////        }
 //    }
 //
 //
 //    private void timeTest() throws RemoteException {
 //        Account_int next = getNextAccount();
+//        System.out.println("before before");
 //        if (!this.equals(next)) {
 //            System.out.println("before");
 //            new Thread(new Runnable() {
 //                @Override
 //                public void run() {
 //                    try {
-//                        accounts.get(0).stall();
+//                        System.out.println(accounts.get(0).stall());
 //                    } catch (RemoteException e) {
 //                        e.printStackTrace();
 //                    }
 //                }
 //            }).start();
 //            System.out.println("after");
+//            System.out.println("response: " + accounts.get(0).getID());
 //        }
 //    }
 
