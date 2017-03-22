@@ -18,6 +18,6 @@ public interface Account_int extends Remote {
     void receiveMarker(Account_int sender, Account_int leader, String snapshotID) throws RemoteException;
 
     // logging states (invoked on leader only)
-    void logState(Account_int sender, String entry) throws RemoteException;
+    void logState(Account_int sender, String snapshotID, String entry, int totalVolume) throws RemoteException;
 
 }

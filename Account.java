@@ -6,6 +6,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
+import java.io.*;
 
 public class Account implements Account_int {
 
@@ -18,11 +19,18 @@ public class Account implements Account_int {
     // map form: <snapshotID, [unheardFromAccounts]>
     HashMap<String, HashSet<Account_int>> activeSnapshots;
 
+    HashMap<String, StringBuilder> snapshotLogs;
+    HashMap<String, StringBuilder> transfers;
+    HashMap<String, HashSet<Account_int>> unloggedFromAccounts;
+
     public Account(int balance) {
         this.balance = balance;
         accounts = new ArrayList<>();
         accounts.add(this);
         activeSnapshots = new HashMap<>();
+        snapshotLogs = new HashMap<>();
+        transfers = new HashMap<>();
+        unloggedFromAccounts = new HashMap<>();
     }
 
     @Override
@@ -45,6 +53,9 @@ public class Account implements Account_int {
     @Override
     public void receiveTransfer(Account_int sender, int amount) throws RemoteException {
         //TODO if unheard from sender record
+        for(StringBuilder t: transfers.values()) {
+            t.append("$"+amount + " from " + sender + ", ");
+        }
         System.out.println("Received $" + amount + "from" + sender);
         balance += amount;
     }
@@ -76,13 +87,15 @@ public class Account implements Account_int {
             // stop recording (remove sender from snapshot set)
             activeSnapshots.get(snapshotID).remove(sender);
 
-            // if all stopped, log
+            // if all accounts are heard from, log
             if (activeSnapshots.get(snapshotID).isEmpty()) {
-
+                String entry = id + " | balance: $" + balance + " | transfers: "; //TODO transfers & total volume
+                leader.logState(sender, snapshotID, entry, 0);
+                activeSnapshots.remove(snapshotID);
+                transfers.remove(snapshotID);
             }
 
         } else {
-
             // start recording
             HashSet<Account_int> unheardFromAccounts = new HashSet<Account_int>(accounts);
             // heard from sender and self
@@ -90,8 +103,20 @@ public class Account implements Account_int {
             unheardFromAccounts.remove(this);
             activeSnapshots.put(snapshotID, unheardFromAccounts);
 
+            if(this.equals(leader)) {
+                StringBuilder log = new StringBuilder("Snapshot log " + snapshotID + " lead by " + id + ": \n");
+                snapshotLogs.put(snapshotID, log);
+                unloggedFromAccounts.put(snapshotID, unheardFromAccounts);
+            }
+
             // propagate
             // TODO - delay propagation with Thread.sleep()
+            try {
+                Thread.sleep(1000);
+            } catch(InterruptedException e) {
+                System.out.println("interrupted exception on thread");
+                e.printStackTrace();
+            }
             Account_int thisAccount = this;
             for (Account_int account: unheardFromAccounts) {
                 // new thread to prevent blocking
@@ -112,8 +137,35 @@ public class Account implements Account_int {
     }
 
     @Override
-    public void logState(Account_int sender, String entry) throws RemoteException {
-        // TODO
+    public void logState(Account_int sender, String snapshotID, String entry, int totalVolume) throws RemoteException {
+        StringBuilder log = snapshotLogs.get(snapshotID).append(entry);
+        //all logs received
+        if (unloggedFromAccounts.get(snapshotID).isEmpty()) {
+            //append volume, write it to file
+            StringBuilder currentLog = snapshotLogs.get(snapshotID);
+            currentLog.append("Total volume: " + totalVolume);
+
+            // make sure snapshot/ directory exists
+            File dir = new File("snapshots");
+            if (!dir.exists()) dir.mkdir();
+
+            // create a new file named with the snapshot timestamp
+            String pathname = "snapshots/" + id;
+            File logFile = new File(pathname);
+
+            //write log to that file
+            try {
+                BufferedWriter writer = new BufferedWriter(new FileWriter(logFile));
+                writer.write(currentLog.toString());
+            } catch (IOException e) {
+                System.err.println("Error while writing to snapshot log file " + id);
+                e.printStackTrace();
+            }
+
+            // monitor snapshot volume
+            System.out.println("Snapshot complete with total volume: $" + totalVolume);
+            }
+        
     }
 
     private Account_int getNextAccount() {
