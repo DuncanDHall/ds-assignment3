@@ -14,13 +14,13 @@ public class Account implements Account_int {
 
     String id;
     Server_int server_stub;
-    Hashmap<String, ArrayList<Account_int>> activeSnapshots;
+    HashMap<String, ArrayList<Account_int>> activeSnapshots;
 
     public Account(int balance) {
         this.balance = balance;
         accounts = new ArrayList<>();
         accounts.add(this);
-        activeSnapshots = new Hashmap<>();
+        activeSnapshots = new HashMap<>();
     }
 
     @Override
