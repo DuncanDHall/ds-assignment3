@@ -2,9 +2,11 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 
 public interface Account_int extends Remote {
+    // necessary only for comparing identity between references (see Account.equals() method)
+    String getID() throws RemoteException;
 
 	// transfer functionality
-    void receive(int amount) throws RemoteException;
+    void receiveTransfer(Account_int sender, int amount) throws RemoteException;
 
     // leader election
     void leaderIs(String accountID) throws RemoteException;
@@ -17,4 +19,5 @@ public interface Account_int extends Remote {
 
     // logging states (invoked on leader only)
     void logState(Account_int sender, String entry) throws RemoteException;
+
 }

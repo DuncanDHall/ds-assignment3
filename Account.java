@@ -11,127 +11,133 @@ public class Account implements Account_int {
 
     int balance;
     ArrayList<Account_int> accounts;
-    String id;
 
-    public Account (int balance) {
+    String id;
+    Server_int server_stub;
+
+    public Account(int balance) {
         this.balance = balance;
         accounts = new ArrayList<>();
-        try {
-            id = "account@" + InetAddress.getLocalHost();
-        } catch (UnknownHostException e) {
-            System.out.println("Account failed to discover it's name:");
-            e.printStackTrace();
-        }
-    }
-
-    public void connectAccount(Account_int accountStub) throws RemoteException {
-        accounts.add(accountStub);
-    }
-
-    public void rename(String newName) throws RemoteException {
-        this.id = newName;
-    }
-
-    public String getID() throws RemoteException {
-    	return id;
-    }
-
-    public void receive(int amount) throws RemoteException {
-        System.out.println("Recieved $" + amount);
-        balance += amount;
-    }
-
-    public void leaderIs(String accountID) throws RemoteException {
-        if (accountID.compareTo(this.getID()) < 0) {
-            System.out.println("me: " + this.getID() + " > " + accountID);
-            leaderIs(this.getID());
-        }
-        if (accountID.compareTo(this.getID()) == 0) {
-            System.out.println("I'm the leader");
-            // start leading
-        }
-        else {
-            getNextAccount().leaderIs(accountID);
-            System.out.println("me: " + this.getID() + " < " + accountID);
-        }
-    }
-
-    public void leaderIs() throws RemoteException {
-        getNextAccount().leaderIs(this.getID());
+        accounts.add(this);
     }
 
     @Override
-    public void stall() throws RemoteException {
-        try {
-            Thread.sleep(100000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+    public boolean equals(Object obj) {
+        if (obj instanceof Account_int) {
+            try {
+                return this.getID().equals(((Account_int) obj).getID());
+            } catch (RemoteException e) {
+                e.printStackTrace();
+                return false;
+            }
+        } else return false;
+    }
+
+    @Override
+    public String getID() throws RemoteException {
+        return id;
+    }
+
+    @Override
+    public void receiveTransfer(Account_int sender, int amount) throws RemoteException {
+        System.out.println("Received $" + amount + "from" + sender);
+        balance += amount;
+    }
+
+    @Override
+    public void leaderIs(String accountID) throws RemoteException {
+        if (accountID.compareTo(id) < 0) {
+            System.out.println("me: " + id + " > " + accountID);
+            leaderIs(id);
+        }
+        if (accountID.compareTo(id) == 0) {
+            System.out.println("I'm the leader");
+            // start leading
+        } else {
+            getNextAccount().leaderIs(accountID);
+            System.out.println("me: " + id + " < " + accountID);
         }
     }
 
-//    public void startLeading(Registry registry) throws RemoteException {
-//        Account_int nextStub = getNextAccount(registry);
-//        nextStub.leaderIs(id, registry);
-//    }
+    @Override
+    public void leaderIs() throws RemoteException {
+        getNextAccount().leaderIs(id);
+    }
 
-    private Account_int getNextAccount() throws RemoteException {
-    	//if accounts is empty return reference to self
-    	if(accounts.isEmpty()) {
-    	    return this;
-    	}
+    @Override
+    public void receiveMarker(Account_int sender, Account_int leader, String snapshotID) throws RemoteException {
+        // TODO
+    }
 
-    	// else return the smallest greater account, or if there is none, the smallest overall
-    	Account_int leastGreater = null;
-    	Account_int least = accounts.get(0);
+    @Override
+    public void logState(Account_int sender, String entry) throws RemoteException {
+        // TODO
+    }
 
-    	for (Account_int accountStub: accounts) {
-    	    // updating leastGreatest
-    	    if (accountStub.getID().compareTo(this.getID()) > 0) {
-    	        if (leastGreater == null || accountStub.getID().compareTo(leastGreater.getID()) < 0) {
-    	            leastGreater = accountStub;
-                }
-            }
-
-            // updating least
-            if (accountStub.getID().compareTo(least.getID()) < 0) least = accountStub;
-        }
-
-        return (leastGreater == null)? least: leastGreater;
+    private Account_int getNextAccount() {
+        int i = 0;
+        while (!this.equals(accounts.get(i))) i++;
+        return accounts.get((i + 1) % accounts.size());
     }
 
     @Override
     public String toString() {
-    	return "Account object with id: " + id;
+        return "Account object with id: " + id;
     }
 
     public void transfer() throws RemoteException {
 
-        int time = (int)(Math.random() * 2000)+1000;
-        final int amount = (int)(Math.random() * balance)+1;
-        //int pid = (int)(Math.random() * 4)+1;
-        new Timer().schedule (
-        	new TimerTask() {
-        		@Override
-        		public void run() {
-                    System.out.println("Attempting transfer...");
-        			try {
-        				if (accounts.size() != 0 && balance > 0) {
-        					int stubIndex = (int)(Math.random() * accounts.size());
-	        				Account_int stub = accounts.get(stubIndex);
-	        				balance -= amount;
-	        				stub.receive(amount);
-	        				System.out.println("\t...sent $"+amount+" to "+accounts.get(stubIndex).getID());
-        				} else {
-                            System.out.println("\t...no other accounts found");
+        int time = (int) (Math.random() * 2000) + 1000;
+        final int amount = (int) (Math.random() * balance) + 1;
+
+        final Account_int this_account = this;
+
+        new Timer().schedule(
+                new TimerTask() {
+                    @Override
+                    public void run() {
+                        System.out.println("Attempting transfer...");
+                        try {
+                            if (accounts.size() != 0 && balance > 0) {
+                                int stubIndex = (int) (Math.random() * accounts.size());
+                                Account_int stub = accounts.get(stubIndex);
+                                balance -= amount;
+                                stub.receiveTransfer(this_account, amount);
+                                System.out.println("\t...sent $" + amount + " to " + accounts.get(stubIndex));
+                            } else {
+                                System.out.println("\t...no other accounts found");
+                            }
+                            transfer();
+                        } catch (RemoteException e) {
+                            System.out.println("Unable to connect to target account while transferring:");
+                            e.printStackTrace();
                         }
-        				transfer();
-    				} catch (RemoteException e) {
-                        System.out.println("Unable to connect to target account while transferring:");
-                        e.printStackTrace();
                     }
-                }
-        	}, time
+                }, time
         );
+    }
+
+
+    private void connectToServer() throws RemoteException, NotBoundException {
+        System.out.println("What ip is the server's rmi registry located on?");
+        Scanner scan = new Scanner(System.in);
+        String host_ip = scan.nextLine();
+
+        System.out.println("Connecting to rmi registry...");
+        Registry registry = LocateRegistry.getRegistry(host_ip,1099);
+        server_stub = (Server_int) registry.lookup("server");
+
+        Account_int stub = (Account_int) UnicastRemoteObject.exportObject(this, 0);
+        try {
+            id = server_stub.generateAccountID(InetAddress.getLocalHost().toString());
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+        server_stub.connect(this, id);
+    }
+
+    private void refreshAccounts() throws RemoteException {
+        accounts = server_stub.getAccounts();
     }
 
 
@@ -140,27 +146,34 @@ public class Account implements Account_int {
 //    	String host = (args.length < 1) ? null : args[0];
 
         System.out.println("Account initializing...");
-        Account account = new Account(200);
+        final Account account = new Account(200);
 
         try {
-            System.out.println("What ip is the server's rmi registry located on?");
-            Scanner scan = new Scanner(System.in);
-            String host_ip = scan.nextLine();
-
-            System.out.println("Connecting to rmi registry...");
-            Account_int stub = (Account_int) UnicastRemoteObject.exportObject(account, 0);
-
-            Registry registry = LocateRegistry.getRegistry(host_ip,1099);
-            Server_int server_stub = (Server_int) registry.lookup("server");
-
-            System.out.println("Connecting to other accounts...");
-
-            server_stub.connect(stub);
-
-            System.err.println("Account ready: " + account.getID());
 
 
-            account.timeTest();
+//            server_stub.connect(stub);
+            account.connectToServer();
+            // TODO: every once in a while refresh account list
+
+            System.err.println("Account ready: " + account);
+
+            Timer accountRefreshTimer = new Timer();
+
+//            accountRefreshTimer.schedule( new TimerTask() {
+//                @Override
+//                public void run() {
+//                    try {
+//                        account.refreshAccounts();
+//                    } catch (RemoteException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//            }, 0, 1000);
+//            System.out.println("starting timetest");
+
+
+//            account.refreshAccounts();
+//            account.timeTest();
 
 //            account.leaderIs();
 //            account.transfer();
@@ -174,16 +187,38 @@ public class Account implements Account_int {
         }
     }
 
-    private void timeTest() {
-        if (!accounts.isEmpty()) {
-            System.out.println("here1");
-            try {
-                accounts.get(0).stall();
-            } catch (RemoteException e) {
-                e.printStackTrace();
-            }
-            System.out.println("here");
-        }
-    }
+
+//    @Override
+//    public void stall() throws RemoteException {
+//        System.out.println("before");
+//        int j = 5;
+//        int sum = 1;
+//        while (j++ < 1000000000) {
+//            int s = j;
+//            while (s > 0) {
+//                sum += s;
+//                s--;
+//            }
+//        }
+//    }
+//
+//
+//    private void timeTest() throws RemoteException {
+//        Account_int next = getNextAccount();
+//        if (!this.equals(next)) {
+//            System.out.println("before");
+//            new Thread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    try {
+//                        accounts.get(0).stall();
+//                    } catch (RemoteException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//            }).start();
+//            System.out.println("after");
+//        }
+//    }
 
 }
