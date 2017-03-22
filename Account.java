@@ -14,11 +14,13 @@ public class Account implements Account_int {
 
     String id;
     Server_int server_stub;
+    Hashmap<String, ArrayList<Account_int>> activeSnapshots;
 
     public Account(int balance) {
         this.balance = balance;
         accounts = new ArrayList<>();
         accounts.add(this);
+        activeSnapshots = new Hashmap<>();
     }
 
     @Override
@@ -53,6 +55,7 @@ public class Account implements Account_int {
         if (accountID.compareTo(id) == 0) {
             System.out.println("I'm the leader");
             // start leading
+
         } else {
             getNextAccount().leaderIs(accountID);
             System.out.println("me: " + id + " < " + accountID);
@@ -66,7 +69,16 @@ public class Account implements Account_int {
 
     @Override
     public void receiveMarker(Account_int sender, Account_int leader, String snapshotID) throws RemoteException {
-        // TODO
+        if(activeSnapshots.containsKey(snapshotID)) {
+
+        } else {
+            ArrayList<Account_int> unheardFromAccounts = new ArrayList<Account_int>(accounts);
+            //remove yourself from accounts
+            unheardFromAccounts.remove(sender);
+            unheardFromAccounts.remove(this);
+            System.out.println(unheardFromAccounts);
+            activeSnapshots.put(snapshotID, unheardFromAccounts);
+        }
     }
 
     @Override
@@ -147,17 +159,20 @@ public class Account implements Account_int {
 
         System.out.println("Account initializing...");
         final Account account = new Account(200);
+        final Account account2 = new Account(200);
 
         try {
 
 
 //            server_stub.connect(stub);
             account.connectToServer();
+            account2.connectToServer();
             // TODO: every once in a while refresh account list
 
             System.err.println("Account ready: " + account);
 
             Timer accountRefreshTimer = new Timer();
+            account.receiveMarker(account2, account, "snapshot_test");
 
 //            accountRefreshTimer.schedule( new TimerTask() {
 //                @Override
