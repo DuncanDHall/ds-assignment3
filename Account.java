@@ -14,7 +14,9 @@ public class Account implements Account_int {
 
     String id;
     Server_int server_stub;
-    HashMap<String, ArrayList<Account_int>> activeSnapshots;
+
+    // map form: <snapshotID, [unheardFromAccounts]>
+    HashMap<String, HashSet<Account_int>> activeSnapshots;
 
     public Account(int balance) {
         this.balance = balance;
@@ -42,6 +44,7 @@ public class Account implements Account_int {
 
     @Override
     public void receiveTransfer(Account_int sender, int amount) throws RemoteException {
+        //TODO if unheard from sender record
         System.out.println("Received $" + amount + "from" + sender);
         balance += amount;
     }
@@ -69,16 +72,43 @@ public class Account implements Account_int {
 
     @Override
     public void receiveMarker(Account_int sender, Account_int leader, String snapshotID) throws RemoteException {
-        if(activeSnapshots.containsKey(snapshotID)) {
+        if (activeSnapshots.containsKey(snapshotID)) {
+            // stop recording (remove sender from snapshot set)
+            activeSnapshots.get(snapshotID).remove(sender);
+
+            // if all stopped, log
+            if (activeSnapshots.get(snapshotID).isEmpty()) {
+
+            }
 
         } else {
-            ArrayList<Account_int> unheardFromAccounts = new ArrayList<Account_int>(accounts);
-            //remove yourself from accounts
+
+            // start recording
+            HashSet<Account_int> unheardFromAccounts = new HashSet<Account_int>(accounts);
+            // heard from sender and self
             unheardFromAccounts.remove(sender);
             unheardFromAccounts.remove(this);
-            System.out.println(unheardFromAccounts);
             activeSnapshots.put(snapshotID, unheardFromAccounts);
+
+            // propagate
+            // TODO - delay propagation with Thread.sleep()
+            Account_int thisAccount = this;
+            for (Account_int account: unheardFromAccounts) {
+                // new thread to prevent blocking
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            account.receiveMarker(thisAccount, leader, snapshotID);
+                        } catch (RemoteException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }).start();
+            }
         }
+
+        //TODO - finish method
     }
 
     @Override
@@ -172,6 +202,7 @@ public class Account implements Account_int {
             System.err.println("Account ready: " + account);
 
             Timer accountRefreshTimer = new Timer();
+            account.refreshAccounts();
             account.receiveMarker(account2, account, "snapshot_test");
 
 //            accountRefreshTimer.schedule( new TimerTask() {

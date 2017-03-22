@@ -27,7 +27,6 @@ public class Server implements Server_int {
     @Override
     public boolean connect(Account_int stub, String accountID) throws RemoteException {
         accounts.add(stub);
-        for (Account_int a: accounts) System.out.println(a.getID());
         accountNum++;
         System.out.println("Account " + accountID + " was connected.");
         return true;
