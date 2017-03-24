@@ -5,6 +5,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.Scanner;
 
 /**
  * Created by duncan on 3/16/17.
@@ -50,6 +51,13 @@ public class Server implements Server_int {
 
             System.out.println("Server ready!");
             System.out.println("ip: " + InetAddress.getLocalHost());
+
+            System.out.println("type 'start' to start snapshot process");
+            Scanner scan = new Scanner(System.in);
+            if (scan.nextLine().equals("start")) {
+                server.startSnapshots();
+            }
+
         } catch (RemoteException e) {
             System.err.println("Server crashed due to rmi connection issues:");
             e.printStackTrace();
@@ -57,5 +65,10 @@ public class Server implements Server_int {
             System.err.println("Server failed startup while attempting to access ip:");
             e.printStackTrace();
         }
+    }
+
+    public void startSnapshots() throws RemoteException {
+        System.out.println("Starting snapshots");
+        accounts.get(0).leaderIs("");
     }
 }

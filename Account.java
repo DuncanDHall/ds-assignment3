@@ -20,10 +20,11 @@ public class Account implements Account_int {
     String id;
     Server_int server_stub;
 
+    // snapshot-specific tracking
+
     // map form: <snapshotID, [unheardFromAccounts]>
     HashMap<String, HashSet<Account_int>> activeSnapshots;
-
-    HashMap<String, StringBuilder> snapshotLogs;
+    HashMap<String, StringBuilder> leaderLogs;
     HashMap<String, StringBuilder> logEntries;
     HashMap<String, HashSet<Account_int>> unloggedFromAccounts;
     HashMap<String, Integer> snapshotVolumes;
@@ -31,11 +32,13 @@ public class Account implements Account_int {
 
     public Account(int balance) {
         this.balance = balance;
+
         accounts = new ArrayList<>();
         accounts.add(this);
+
         activeSnapshots = new HashMap<>();
-        snapshotLogs = new HashMap<>();
-        logEntries = new HashMap<>();
+        leaderLogs = new HashMap<>();  // leader
+        logEntries = new HashMap<>();  // non-leader
         unloggedFromAccounts = new HashMap<>();
         snapshotVolumes = new HashMap<>();
         leaderVolumes = new HashMap<>();
@@ -43,14 +46,23 @@ public class Account implements Account_int {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean myEquals(Object obj) {
         if (obj instanceof Account_int) {
+            String a, b;
             try {
-                return this.getID().equals(((Account_int) obj).getID());
+                a = this.getID();
+                b = ((Account_int) obj).getID();
+                return a.equals(b);
             } catch (RemoteException e) {
                 e.printStackTrace();
                 return false;
             }
+//            try {
+//                return this.getID().equals(((Account_int) obj).getID());
+//            } catch (RemoteException e) {
+//                e.printStackTrace();
+//                return false;
+//            }
         } else return false;
     }
 
@@ -61,23 +73,22 @@ public class Account implements Account_int {
 
     @Override
     public void receiveTransfer(Account_int sender, int amount) throws RemoteException {
-        //TODO if unheard from sender record
-        //log transfers
-        for(StringBuilder t: logEntries.values()) {
-            t.append("$"+amount + " from " + sender + ", ");
-        }
-        for(String id: snapshotVolumes.keySet()) {
-            snapshotVolumes.put(id, (snapshotVolumes.get(id)+amount));
-        }
         balance += amount;
-        System.out.println("Received $" + amount + "from" + sender.getID()); 
+        //log transfers
+        for(String snapshotID: snapshotVolumes.keySet()) {
+            if (activeSnapshots.get(snapshotID).contains(sender)) {
+                snapshotVolumes.put(snapshotID, (snapshotVolumes.get(snapshotID)+amount));
+                logEntries.get(snapshotID).append("$"+amount + " from " + sender.getID() + ", ");
+            }
+        }
+        System.out.println("Received $" + amount + " from " + sender.getID());
     }
 
     @Override
     public void leaderIs(String accountID) throws RemoteException {
         refreshAccounts();
         if (accountID.compareTo(id) < 0) {
-            System.out.println("me: " + id + " > " + accountID);
+//            getNextAccount().leaderIs(id);
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -88,36 +99,49 @@ public class Account implements Account_int {
                     }
                 }
             }).start();
-            
+//            System.out.println("me: " + id + " > " + accountID);
         }
-        if (accountID.compareTo(id) == 0) {
+        else if (accountID.equals(id)) {
             System.out.println("I'm the leader");
             String snapshotID = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS").format(new Date());
-            this.receiveMarker(this,this,snapshotID);
 
-        } else {
+            new Timer().schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    try {
+                        leaderIs("");
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }, 3000);
+
+            // start snapshot
+            this.receiveMarker(this,this,snapshotID);
+        }
+        else {
+//            getNextAccount().leaderIs(accountID);
             new Thread(new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        getNextAccount().leaderIs(id);
+                        getNextAccount().leaderIs(accountID);
                     } catch(RemoteException e) {
                         e.printStackTrace();
                     }
                 }
             }).start();
-            System.out.println("me: " + id + " < " + accountID);
+//            System.out.println("me: " + id + " < " + accountID);
         }
-    }
-
-    @Override
-    public void leaderIs() throws RemoteException {
-        getNextAccount().leaderIs(id);
     }
 
     @Override
     public void receiveMarker(Account_int sender, Account_int leader, String snapshotID) throws RemoteException {
+
+        // Not first time seeing a marker from this snapshot //
         if (activeSnapshots.containsKey(snapshotID)) {
+            System.out.println("here");
+
             // stop recording (remove sender from snapshot set)
             activeSnapshots.get(snapshotID).remove(sender);
 
@@ -127,41 +151,47 @@ public class Account implements Account_int {
                 activeSnapshots.remove(snapshotID);
                 snapshotVolumes.remove(snapshotID);
             }
+        }
 
-        } else { //first marker
+        // First time seeing a marker from this snapshot //
+        else {
             // start recording
             HashSet<Account_int> unheardFromAccounts = new HashSet<Account_int>(accounts);
             // heard from sender and self
-            unheardFromAccounts.remove(sender);
-            unheardFromAccounts.remove(this);
+            for (Account_int account: new ArrayList<Account_int>(unheardFromAccounts)) {
+                if (this.myEquals(account) || sender.myEquals(account)) unheardFromAccounts.remove(account);
+            }
+            System.out.println(unheardFromAccounts);
             activeSnapshots.put(snapshotID, unheardFromAccounts);
+
             StringBuilder entry = new StringBuilder(id + " | balance: $" + balance + " | transfers: ");
             logEntries.put(snapshotID, entry);
+
             snapshotVolumes.put(snapshotID, balance);
 
-            if(this.equals(leader)) {
-                StringBuilder log = new StringBuilder("Snapshot log " + snapshotID + " lead by " + id + ":");
-                log.append("\n");
-                snapshotLogs.put(snapshotID, log);
+            if(this.myEquals(leader)) {
+                StringBuilder logHeader = new StringBuilder("Snapshot log " + snapshotID + " lead by " + id + ":\n");
+                leaderLogs.put(snapshotID, logHeader);
                 unloggedFromAccounts.put(snapshotID, unheardFromAccounts);
             }
 
             // propagate
-            // TODO - delay propagation with Thread.sleep()
             try {
-                Thread.sleep(1000);
+                Thread.sleep(500);
             } catch(InterruptedException e) {
-                System.out.println("interrupted exception on thread");
+                System.out.println("Error while sleeping snapshot propagation");
                 e.printStackTrace();
             }
-            Account_int thisAccount = this;
-            for (Account_int account: unheardFromAccounts) {
+            final Account_int _this = this;
+            final Account_int _leader = leader;
+            final String _snapshotID = snapshotID;
+            for (final Account_int account: unheardFromAccounts) {
                 // new thread to prevent blocking
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
                         try {
-                            account.receiveMarker(thisAccount, leader, snapshotID);
+                            account.receiveMarker(_this, _leader, _snapshotID);
                         } catch (RemoteException e) {
                             e.printStackTrace();
                         }
@@ -169,19 +199,17 @@ public class Account implements Account_int {
                 }).start();
             }
         }
-
-        //TODO - finish method
     }
 
     @Override
     public void logState(Account_int sender, String snapshotID, String entry, int totalVolume) throws RemoteException {
-        StringBuilder log = snapshotLogs.get(snapshotID).append(entry);
+        StringBuilder log = leaderLogs.get(snapshotID).append(entry);
         leaderVolumes.put(snapshotID, leaderVolumes.getOrDefault(snapshotID,0)+totalVolume);
         //all logs received
         if (unloggedFromAccounts.get(snapshotID).isEmpty()) {
             //append volume, write it to file
-            StringBuilder currentLog = snapshotLogs.get(snapshotID);
-            currentLog.append("Total volume: " + totalVolume);
+            StringBuilder currentLog = leaderLogs.get(snapshotID);
+            currentLog.append("\nTotal volume: $" + leaderVolumes.get(snapshotID) + "\n");
 
             // make sure snapshot/ directory exists
             File dir = new File("snapshots");
@@ -210,8 +238,14 @@ public class Account implements Account_int {
     }
 
     private Account_int getNextAccount() {
+        try {
+            refreshAccounts(); // get updated ordering from server - a bit hacky...
+        } catch (RemoteException e) {
+            System.err.println("Unable to refresh accounts:");
+            e.printStackTrace();
+        }
         int i = 0;
-        while (!this.equals(accounts.get(i))) i++;
+        while (!this.myEquals(accounts.get(i))) i++;
         return accounts.get((i + 1) % accounts.size());
     }
 
@@ -225,7 +259,7 @@ public class Account implements Account_int {
         int time = (int) (Math.random() * 2000) + 1000;
         final int amount = (int) (Math.random() * balance) + 1;
 
-        final Account_int this_account = this;
+        final Account_int _this = this;
 
         new Timer().schedule(
                 new TimerTask() {
@@ -237,17 +271,15 @@ public class Account implements Account_int {
                                 int stubIndex = (int) (Math.random() * accounts.size());
                                 Account_int stub = accounts.get(stubIndex);
                                 
-                                if (!this.equals(stub)) {
-                                    System.out.println("not your own stub");
+                                if (!_this.myEquals(stub)) {
                                     balance -= amount;
-                                    stub.receiveTransfer(this_account, amount);
+                                    stub.receiveTransfer(_this, amount);
                                     System.out.println("\t...sent $" + amount + " to " + accounts.get(stubIndex).getID());
                                 }
                                 
                             } else {
                                 System.out.println("\t...no other accounts found");
                             }
-                            transfer();
                         } catch (RemoteException e) {
                             System.out.println("Unable to connect to target account while transferring:");
                             e.printStackTrace();
@@ -300,36 +332,19 @@ public class Account implements Account_int {
             //Timer accountRefreshTimer = new Timer();
             //account.refreshAccounts();
             //account.receiveMarker(account2, account, "snapshot_test");
-            account.transfer();
-            Timer snapshotTimer = new Timer();
-            snapshotTimer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                 try {
-                    account.leaderIs();
-                 } catch (RemoteException e) {
-                     e.printStackTrace();
-                 }
-             }}, 0, 1000);
-            account.leaderIs();
-           // accountRefreshTimer.schedule( new TimerTask() {
-           //     @Override
-           //     public void run() {
-           //         try {
-           //             account.refreshAccounts();
-           //         } catch (RemoteException e) {
-           //             e.printStackTrace();
-           //         }
-           //     }
-           // }, 0, 1000);
-//            System.out.println("starting timetest");
+
+//             new Timer().schedule(new TimerTask() {
+//                @Override
+//                public void run() {
+//                    try {
+//                        account.transfer();
+//                    } catch (RemoteException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//            }, 0, 200000);
 
 
-//            account.refreshAccounts();
-//            account.timeTest();
-
-//            account.leaderIs();
-           
 
         } catch (RemoteException e) {
             System.err.println("Account error: rmi connection issues:");
@@ -363,7 +378,7 @@ public class Account implements Account_int {
 //    private void timeTest() throws RemoteException {
 //        Account_int next = getNextAccount();
 //        System.out.println("before before");
-//        if (!this.equals(next)) {
+//        if (!this.myEquals(next)) {
 //            System.out.println("before");
 //            new Thread(new Runnable() {
 //                @Override

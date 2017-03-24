@@ -5,12 +5,14 @@ public interface Account_int extends Remote {
     // necessary only for comparing identity between references (see Account.equals() method)
     String getID() throws RemoteException;
 
+    // this seems sloppy, but it's the only way we could make ln 162 in Account.java work
+    boolean myEquals(Object obj) throws RemoteException;
+
 	// transfer functionality
     void receiveTransfer(Account_int sender, int amount) throws RemoteException;
 
     // leader election
     void leaderIs(String accountID) throws RemoteException;
-    void leaderIs() throws RemoteException;
 
 //    String stall() throws RemoteException;
 
