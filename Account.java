@@ -1,3 +1,7 @@
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.rmi.NotBoundException;
@@ -5,8 +9,8 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.text.SimpleDateFormat;
 import java.util.*;
-import java.io.*;
 
 public class Account implements Account_int {
 
@@ -22,8 +26,8 @@ public class Account implements Account_int {
     HashMap<String, StringBuilder> snapshotLogs;
     HashMap<String, StringBuilder> logEntries;
     HashMap<String, HashSet<Account_int>> unloggedFromAccounts;
-    HashMap<String, int> snapshotVolumes;
-    HashMap<String, int> leaderVolumes;
+    HashMap<String, Integer> snapshotVolumes;
+    HashMap<String, Integer> leaderVolumes;
 
     public Account(int balance) {
         this.balance = balance;
@@ -62,7 +66,7 @@ public class Account implements Account_int {
         for(StringBuilder t: logEntries.values()) {
             t.append("$"+amount + " from " + sender + ", ");
         }
-         for(String id: snapshotVolumes.keys()) {
+        for(String id: snapshotVolumes.keySet()) {
             snapshotVolumes.put(id, (snapshotVolumes.get(id)+amount));
         }
         balance += amount;
@@ -100,9 +104,9 @@ public class Account implements Account_int {
 
             // if all accounts are heard from, log
             if (activeSnapshots.get(snapshotID).isEmpty()) {
-                leader.logState(sender, snapshotID, logEntries.get(snapshotID), snapshotVolumes.get(snapshotID));
+                leader.logState(sender, snapshotID, logEntries.get(snapshotID).toString(), snapshotVolumes.get(snapshotID));
                 activeSnapshots.remove(snapshotID);
-                transfers.remove(snapshotID);
+                snapshotVolumes.remove(snapshotID);
             }
 
         } else { //first marker
