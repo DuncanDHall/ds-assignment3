@@ -78,7 +78,17 @@ public class Account implements Account_int {
         refreshAccounts();
         if (accountID.compareTo(id) < 0) {
             System.out.println("me: " + id + " > " + accountID);
-            leaderIs(id);
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        getNextAccount().leaderIs(id);
+                    } catch(RemoteException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+            
         }
         if (accountID.compareTo(id) == 0) {
             System.out.println("I'm the leader");
@@ -86,7 +96,16 @@ public class Account implements Account_int {
             this.receiveMarker(this,this,snapshotID);
 
         } else {
-            getNextAccount().leaderIs(accountID);
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        getNextAccount().leaderIs(id);
+                    } catch(RemoteException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
             System.out.println("me: " + id + " < " + accountID);
         }
     }
@@ -116,12 +135,13 @@ public class Account implements Account_int {
             unheardFromAccounts.remove(sender);
             unheardFromAccounts.remove(this);
             activeSnapshots.put(snapshotID, unheardFromAccounts);
-            
-            logEntries.get(snapshotID).append(id + " | balance: $" + balance + " | transfers: ");
+            StringBuilder entry = new StringBuilder(id + " | balance: $" + balance + " | transfers: ");
+            logEntries.put(snapshotID, entry);
             snapshotVolumes.put(snapshotID, balance);
 
             if(this.equals(leader)) {
-                StringBuilder log = new StringBuilder("Snapshot log " + snapshotID + " lead by " + id + ": \n");
+                StringBuilder log = new StringBuilder("Snapshot log " + snapshotID + " lead by " + id + ":");
+                log.append("\n");
                 snapshotLogs.put(snapshotID, log);
                 unloggedFromAccounts.put(snapshotID, unheardFromAccounts);
             }
@@ -168,17 +188,20 @@ public class Account implements Account_int {
             if (!dir.exists()) dir.mkdir();
 
             // create a new file named with the snapshot timestamp
-            String pathname = "snapshots/" + id;
+            String pathname = "snapshots/" + snapshotID + ".txt";
             File logFile = new File(pathname);
 
             //write log to that file
+            BufferedWriter writer;
             try {
-                BufferedWriter writer = new BufferedWriter(new FileWriter(logFile));
+                writer = new BufferedWriter(new FileWriter(logFile));
                 writer.write(currentLog.toString());
+                writer.close();
             } catch (IOException e) {
                 System.err.println("Error while writing to snapshot log file " + id);
                 e.printStackTrace();
             }
+
 
             // monitor snapshot volume
             System.out.println("Snapshot complete with total volume: $" + totalVolume);
@@ -214,7 +237,7 @@ public class Account implements Account_int {
                                 int stubIndex = (int) (Math.random() * accounts.size());
                                 Account_int stub = accounts.get(stubIndex);
                                 balance -= amount;
-                                stub.receiveTransfer(this_account, amount);
+                                if (!this.equals(stub)) stub.receiveTransfer(this_account, amount);
                                 System.out.println("\t...sent $" + amount + " to " + accounts.get(stubIndex));
                             } else {
                                 System.out.println("\t...no other accounts found");
@@ -273,6 +296,16 @@ public class Account implements Account_int {
             //account.refreshAccounts();
             //account.receiveMarker(account2, account, "snapshot_test");
             account.transfer();
+            Timer snapshotTimer = new Timer();
+            snapshotTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                 try {
+                    account.leaderIs();
+                 } catch (RemoteException e) {
+                     e.printStackTrace();
+                 }
+             }}, 0, 1000);
             account.leaderIs();
            // accountRefreshTimer.schedule( new TimerTask() {
            //     @Override
