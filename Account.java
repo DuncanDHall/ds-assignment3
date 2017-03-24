@@ -143,7 +143,7 @@ public class Account implements Account_int {
             System.out.println("here");
 
             // stop recording (remove sender from snapshot set)
-            activeSnapshots.get(snapshotID).remove(sender);
+            System.out.println(activeSnapshots.get(snapshotID).remove(sender));
 
             // if all accounts are heard from, log
             if (activeSnapshots.get(snapshotID).isEmpty()) {
