@@ -70,7 +70,7 @@ public class Account implements Account_int {
             snapshotVolumes.put(id, (snapshotVolumes.get(id)+amount));
         }
         balance += amount;
-        System.out.println("Received $" + amount + "from" + sender); 
+        System.out.println("Received $" + amount + "from" + sender.getID()); 
     }
 
     @Override
@@ -236,9 +236,14 @@ public class Account implements Account_int {
                             if (accounts.size() != 0 && balance > 0) {
                                 int stubIndex = (int) (Math.random() * accounts.size());
                                 Account_int stub = accounts.get(stubIndex);
-                                balance -= amount;
-                                if (!this.equals(stub)) stub.receiveTransfer(this_account, amount);
-                                System.out.println("\t...sent $" + amount + " to " + accounts.get(stubIndex));
+                                
+                                if (!this.equals(stub)) {
+                                    System.out.println("not your own stub");
+                                    balance -= amount;
+                                    stub.receiveTransfer(this_account, amount);
+                                    System.out.println("\t...sent $" + amount + " to " + accounts.get(stubIndex).getID());
+                                }
+                                
                             } else {
                                 System.out.println("\t...no other accounts found");
                             }
