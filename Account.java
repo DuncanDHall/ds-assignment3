@@ -20,8 +20,10 @@ public class Account implements Account_int {
     HashMap<String, HashSet<Account_int>> activeSnapshots;
 
     HashMap<String, StringBuilder> snapshotLogs;
-    HashMap<String, StringBuilder> transfers;
+    HashMap<String, StringBuilder> logEntries;
     HashMap<String, HashSet<Account_int>> unloggedFromAccounts;
+    HashMap<String, int> snapshotVolumes;
+    HashMap<String, int> leaderVolumes;
 
     public Account(int balance) {
         this.balance = balance;
@@ -29,8 +31,11 @@ public class Account implements Account_int {
         accounts.add(this);
         activeSnapshots = new HashMap<>();
         snapshotLogs = new HashMap<>();
-        transfers = new HashMap<>();
+        logEntries = new HashMap<>();
         unloggedFromAccounts = new HashMap<>();
+        snapshotVolumes = new HashMap<>();
+        leaderVolumes = new HashMap<>();
+
     }
 
     @Override
@@ -53,22 +58,28 @@ public class Account implements Account_int {
     @Override
     public void receiveTransfer(Account_int sender, int amount) throws RemoteException {
         //TODO if unheard from sender record
-        for(StringBuilder t: transfers.values()) {
+        //log transfers
+        for(StringBuilder t: logEntries.values()) {
             t.append("$"+amount + " from " + sender + ", ");
         }
-        System.out.println("Received $" + amount + "from" + sender);
+         for(String id: snapshotVolumes.keys()) {
+            snapshotVolumes.put(id, (snapshotVolumes.get(id)+amount));
+        }
         balance += amount;
+        System.out.println("Received $" + amount + "from" + sender); 
     }
 
     @Override
     public void leaderIs(String accountID) throws RemoteException {
+        refreshAccounts();
         if (accountID.compareTo(id) < 0) {
             System.out.println("me: " + id + " > " + accountID);
             leaderIs(id);
         }
         if (accountID.compareTo(id) == 0) {
             System.out.println("I'm the leader");
-            // start leading
+            String snapshotID = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS").format(new Date());
+            this.receiveMarker(this,this,snapshotID);
 
         } else {
             getNextAccount().leaderIs(accountID);
@@ -89,19 +100,21 @@ public class Account implements Account_int {
 
             // if all accounts are heard from, log
             if (activeSnapshots.get(snapshotID).isEmpty()) {
-                String entry = id + " | balance: $" + balance + " | transfers: "; //TODO transfers & total volume
-                leader.logState(sender, snapshotID, entry, 0);
+                leader.logState(sender, snapshotID, logEntries.get(snapshotID), snapshotVolumes.get(snapshotID));
                 activeSnapshots.remove(snapshotID);
                 transfers.remove(snapshotID);
             }
 
-        } else {
+        } else { //first marker
             // start recording
             HashSet<Account_int> unheardFromAccounts = new HashSet<Account_int>(accounts);
             // heard from sender and self
             unheardFromAccounts.remove(sender);
             unheardFromAccounts.remove(this);
             activeSnapshots.put(snapshotID, unheardFromAccounts);
+            
+            logEntries.get(snapshotID).append(id + " | balance: $" + balance + " | transfers: ");
+            snapshotVolumes.put(snapshotID, balance);
 
             if(this.equals(leader)) {
                 StringBuilder log = new StringBuilder("Snapshot log " + snapshotID + " lead by " + id + ": \n");
@@ -139,6 +152,7 @@ public class Account implements Account_int {
     @Override
     public void logState(Account_int sender, String snapshotID, String entry, int totalVolume) throws RemoteException {
         StringBuilder log = snapshotLogs.get(snapshotID).append(entry);
+        leaderVolumes.put(snapshotID, leaderVolumes.getOrDefault(snapshotID,0)+totalVolume);
         //all logs received
         if (unloggedFromAccounts.get(snapshotID).isEmpty()) {
             //append volume, write it to file
@@ -241,32 +255,31 @@ public class Account implements Account_int {
 
         System.out.println("Account initializing...");
         final Account account = new Account(200);
-        final Account account2 = new Account(200);
+        //final Account account2 = new Account(200);
 
         try {
-
-
 //            server_stub.connect(stub);
             account.connectToServer();
-            account2.connectToServer();
+            //account2.connectToServer();
             // TODO: every once in a while refresh account list
 
             System.err.println("Account ready: " + account);
 
-            Timer accountRefreshTimer = new Timer();
-            account.refreshAccounts();
-            account.receiveMarker(account2, account, "snapshot_test");
-
-//            accountRefreshTimer.schedule( new TimerTask() {
-//                @Override
-//                public void run() {
-//                    try {
-//                        account.refreshAccounts();
-//                    } catch (RemoteException e) {
-//                        e.printStackTrace();
-//                    }
-//                }
-//            }, 0, 1000);
+            //Timer accountRefreshTimer = new Timer();
+            //account.refreshAccounts();
+            //account.receiveMarker(account2, account, "snapshot_test");
+            account.transfer();
+            account.leaderIs();
+           // accountRefreshTimer.schedule( new TimerTask() {
+           //     @Override
+           //     public void run() {
+           //         try {
+           //             account.refreshAccounts();
+           //         } catch (RemoteException e) {
+           //             e.printStackTrace();
+           //         }
+           //     }
+           // }, 0, 1000);
 //            System.out.println("starting timetest");
 
 
@@ -274,7 +287,7 @@ public class Account implements Account_int {
 //            account.timeTest();
 
 //            account.leaderIs();
-//            account.transfer();
+           
 
         } catch (RemoteException e) {
             System.err.println("Account error: rmi connection issues:");
