@@ -138,7 +138,7 @@ public class Account implements Account_int {
     @Override
     public void receiveMarker(Account_int sender, Account_int leader, String snapshotID) throws RemoteException {
 
-        //TODO this is a problem
+        //TODO - remove this
         System.out.println(activeSnapshots);
 
         // Not first time seeing a marker from this snapshot //
@@ -146,7 +146,7 @@ public class Account implements Account_int {
             System.out.println("here");
 
             // stop recording (remove sender from snapshot set)
-            System.out.println(activeSnapshots.get(snapshotID).remove(sender));
+            activeSnapshots.get(snapshotID).remove(sender);
         }
 
         // First time seeing a marker from this snapshot //
@@ -167,12 +167,12 @@ public class Account implements Account_int {
             if(this.myEquals(leader)) {
                 StringBuilder logHeader = new StringBuilder("Snapshot log " + snapshotID + " lead by " + id + ":\n");
                 leaderLogs.put(snapshotID, logHeader);
-                unloggedFromAccounts.put(snapshotID, unheardFromAccounts);
+                unloggedFromAccounts.put(snapshotID, new HashSet<Account_int>(accounts));
             }
 
             // propagate
             try {
-                Thread.sleep(500);
+                Thread.sleep(1500);
             } catch(InterruptedException e) {
                 System.out.println("Error while sleeping snapshot propagation");
                 e.printStackTrace();
@@ -200,7 +200,18 @@ public class Account implements Account_int {
 
         // if all accounts are heard from, log
         if (activeSnapshots.get(snapshotID).isEmpty()) {
-            leader.logState(sender, snapshotID, logEntries.get(snapshotID).toString(), snapshotVolumes.get(snapshotID));
+            final int volume = snapshotVolumes.get(snapshotID);
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        leader.logState(sender, snapshotID, logEntries.get(snapshotID).toString(), volume);
+                    } catch (RemoteException e) {
+                        System.err.println("unable to log state");
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
             activeSnapshots.remove(snapshotID);
             snapshotVolumes.remove(snapshotID);
         }
@@ -210,8 +221,13 @@ public class Account implements Account_int {
     public void logState(Account_int sender, String snapshotID, String entry, int totalVolume) throws RemoteException {
         StringBuilder log = leaderLogs.get(snapshotID).append(entry);
         leaderVolumes.put(snapshotID, leaderVolumes.getOrDefault(snapshotID,0)+totalVolume);
+        System.out.println(unloggedFromAccounts);
+        System.out.println("flag: " + unloggedFromAccounts.get(snapshotID).remove(sender));
+        System.out.println(unloggedFromAccounts);
         //all logs received
         if (unloggedFromAccounts.get(snapshotID).isEmpty()) {
+            System.out.println("made it");
+
             //append volume, write it to file
             StringBuilder currentLog = leaderLogs.get(snapshotID);
             currentLog.append("\nTotal volume: $" + leaderVolumes.get(snapshotID) + "\n");
@@ -236,7 +252,8 @@ public class Account implements Account_int {
             }
 
             // remove snapshot from hashes:
-            activeSnapshots.remove(snapshotID);
+            //TODO -rm print
+            System.out.println(activeSnapshots.remove(snapshotID));
             leaderLogs.remove(snapshotID);
 
             // monitor snapshot volume
@@ -341,16 +358,16 @@ public class Account implements Account_int {
             //account.refreshAccounts();
             //account.receiveMarker(account2, account, "snapshot_test");
 
-//             new Timer().schedule(new TimerTask() {
-//                @Override
-//                public void run() {
-//                    try {
-//                        account.transfer();
-//                    } catch (RemoteException e) {
-//                        e.printStackTrace();
-//                    }
-//                }
-//            }, 0, 200000);
+            new Timer().schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    try {
+                        account.transfer();
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }, 0, 1000);
 
 
 
