@@ -54,8 +54,12 @@ public class Server implements Server_int {
 
             System.out.println("type 'start' to start snapshot process");
             Scanner scan = new Scanner(System.in);
-            if (scan.nextLine().equals("start")) {
-                server.startSnapshots();
+            while (true) {
+                if (scan.nextLine().equals("start")) {
+                    server.startSnapshots();
+                } else {
+                    System.out.println("didn't catch that, try 'start'...");
+                }
             }
 
         } catch (RemoteException e) {

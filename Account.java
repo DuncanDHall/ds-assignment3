@@ -138,19 +138,15 @@ public class Account implements Account_int {
     @Override
     public void receiveMarker(Account_int sender, Account_int leader, String snapshotID) throws RemoteException {
 
+        //TODO this is a problem
+        System.out.println(activeSnapshots);
+
         // Not first time seeing a marker from this snapshot //
         if (activeSnapshots.containsKey(snapshotID)) {
             System.out.println("here");
 
             // stop recording (remove sender from snapshot set)
             System.out.println(activeSnapshots.get(snapshotID).remove(sender));
-
-            // if all accounts are heard from, log
-            if (activeSnapshots.get(snapshotID).isEmpty()) {
-                leader.logState(sender, snapshotID, logEntries.get(snapshotID).toString(), snapshotVolumes.get(snapshotID));
-                activeSnapshots.remove(snapshotID);
-                snapshotVolumes.remove(snapshotID);
-            }
         }
 
         // First time seeing a marker from this snapshot //
@@ -161,10 +157,9 @@ public class Account implements Account_int {
             for (Account_int account: new ArrayList<Account_int>(unheardFromAccounts)) {
                 if (this.myEquals(account) || sender.myEquals(account)) unheardFromAccounts.remove(account);
             }
-            System.out.println(unheardFromAccounts);
             activeSnapshots.put(snapshotID, unheardFromAccounts);
 
-            StringBuilder entry = new StringBuilder(id + " | balance: $" + balance + " | transfers: ");
+            StringBuilder entry = new StringBuilder("\n" + id + " | balance: $" + balance + " | transfers: ");
             logEntries.put(snapshotID, entry);
 
             snapshotVolumes.put(snapshotID, balance);
@@ -182,22 +177,32 @@ public class Account implements Account_int {
                 System.out.println("Error while sleeping snapshot propagation");
                 e.printStackTrace();
             }
-            final Account_int _this = this;
-            final Account_int _leader = leader;
-            final String _snapshotID = snapshotID;
-            for (final Account_int account: unheardFromAccounts) {
-                // new thread to prevent blocking
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            account.receiveMarker(_this, _leader, _snapshotID);
-                        } catch (RemoteException e) {
-                            e.printStackTrace();
+            for (Account_int account: accounts) {
+                if (!this.myEquals(account)) {
+                    System.out.println("propagating snapshot to" + account.getID());
+                    // new thread to prevent blocking
+                    final Account_int _this = this;
+                    final Account_int _leader = leader;
+                    final String _snapshotID = snapshotID;
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                account.receiveMarker(_this, _leader, _snapshotID);
+                            } catch (RemoteException e) {
+                                e.printStackTrace();
+                            }
                         }
-                    }
-                }).start();
+                    }).start();
+                }
             }
+        }
+
+        // if all accounts are heard from, log
+        if (activeSnapshots.get(snapshotID).isEmpty()) {
+            leader.logState(sender, snapshotID, logEntries.get(snapshotID).toString(), snapshotVolumes.get(snapshotID));
+            activeSnapshots.remove(snapshotID);
+            snapshotVolumes.remove(snapshotID);
         }
     }
 
@@ -230,6 +235,9 @@ public class Account implements Account_int {
                 e.printStackTrace();
             }
 
+            // remove snapshot from hashes:
+            activeSnapshots.remove(snapshotID);
+            leaderLogs.remove(snapshotID);
 
             // monitor snapshot volume
             System.out.println("Snapshot complete with total volume: $" + totalVolume);
